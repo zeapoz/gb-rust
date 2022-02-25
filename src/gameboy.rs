@@ -17,4 +17,8 @@ impl Gameboy {
             cpu: Cpu::new(),
         }
     }
+
+    pub fn get_rom(&self) -> &Rom {
+        self.memory.get_rom()
+    }
 }

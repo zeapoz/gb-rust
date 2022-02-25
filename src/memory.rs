@@ -24,4 +24,8 @@ impl Memory {
     }
 
     pub fn write(&mut self, address: u16, data: u8) {}
+
+    pub fn get_rom(&self) -> &Rom {
+        &self.rom
+    }
 }

@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Result;
 
+#[derive(Copy, Clone)]
 pub struct Rom {
     data: [u8; 32768],
 }
