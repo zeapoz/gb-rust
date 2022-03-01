@@ -26,18 +26,19 @@ impl Cpu {
         }
     }
 
-    pub fn cycle(&self) {
-        let instruction = self.read_instruction(&self.pc);
-        self.execute_instruction(instruction);
+    pub fn cycle(&mut self, memory: &Memory) {
+        let instruction = self.read_instruction(self.pc, memory);
+        self.execute_instruction(instruction, memory);
     }
 
-    fn read_instruction(&self, pc: &u16) -> u8 {
-        0
+    fn read_instruction(&self, pc: u16, memory: &Memory) -> u8 {
+        memory.read(pc)
     }
 
-    fn execute_instruction(&self, instruction: u8) {
+    fn execute_instruction(&mut self, instruction: u8, memory: &Memory) {
         match instruction {
-            _ => panic!("Invalid instruction read: {}", instruction),
+            0xC3 => self.jp(memory), // Jump
+            _ => panic!("Invalid instruction read: 0x{:X}", instruction),
         }
     }
 
@@ -65,5 +66,7 @@ impl Cpu {
         }
     }
 
-    fn increment_pc(&mut self) {}
+    fn increment_pc(&mut self) {
+        self.pc += 1;
+    }
 }

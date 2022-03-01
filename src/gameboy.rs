@@ -18,8 +18,10 @@ impl Gameboy {
         }
     }
 
-    pub fn cycle(&self) {
-        self.cpu.cycle();
+    pub fn cycle(&mut self) {
+        loop {
+            self.cpu.cycle(&self.memory);
+        }
     }
 
     pub fn get_rom(&self) -> &Rom {

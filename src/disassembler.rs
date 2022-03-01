@@ -20,7 +20,7 @@ impl Disassembler {
     }
 
     pub fn decode_rom(&mut self, rom: &Rom) {
-        println!("ADDR    HEXA    INSTRUCTION    OPERANDS\n");
+        println!("ADDR    HEXA    INSTRUCTION    OPERANDS FLAGS\n");
         for _ in 0..32 {
             let byte = rom.read(self.pc);
             // println!("HI: {:X}, LO: {:X}", hi, lo);
@@ -44,6 +44,13 @@ impl Disassembler {
                 self.pc += 1;
                 let byte = rom.read(self.pc);
                 print!("0x{:02X}, ", byte);
+            }
+        }
+        // If opcodes has flags print
+        let flags = &opcode.flags;
+        for flag in flags.keys().into_iter() {
+            if flags[flag] != '-' {
+                print!("{} ", flag);
             }
         }
         print!("\n");
