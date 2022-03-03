@@ -3,7 +3,7 @@ use serde_json;
 use std::collections::HashMap;
 use std::fs;
 
-use crate::memory::rom::Rom;
+use crate::bus::rom::Rom;
 
 pub struct Disassembler {
     opcodes: OpcodeTable,
@@ -21,7 +21,7 @@ impl Disassembler {
 
     pub fn decode_rom(&mut self, rom: &Rom) {
         println!("ADDR    HEXA    INSTRUCTION    OPERANDS FLAGS\n");
-        for _ in 0..32 {
+        for _ in 0..0x10 {
             let byte = rom.read(self.pc);
             // println!("HI: {:X}, LO: {:X}", hi, lo);
             self.read_instruction(byte, rom);
@@ -36,11 +36,11 @@ impl Disassembler {
             "{:04X}    0x{:02X}    {:<11}    ",
             self.pc, byte, opcode.mnemonic
         );
-        let count = opcode.operands.len();
+        let count = opcode.bytes;
         // If opcode has operands continue otherwise print mnemonic
-        if count > 0 {
+        if count > 1 {
             // Read each operand and print
-            for _ in 0..count {
+            for _ in 1..count {
                 self.pc += 1;
                 let byte = rom.read(self.pc);
                 print!("0x{:02X}, ", byte);

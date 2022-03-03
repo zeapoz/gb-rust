@@ -4,7 +4,6 @@ use gameboy_emulator::gameboy::Gameboy;
 fn main() {
     let rom = "test/tetris.gb";
     let mut gameboy = Gameboy::new(rom);
-    // gameboy.connect_bus();
 
     // Disassemble and decode rom
     let mut disassembler = Disassembler::new();
@@ -12,5 +11,5 @@ fn main() {
     disassembler.decode_rom(rom_data);
 
     // Main loop
-    // gameboy.cycle();
+    gameboy.cycle();
 }

@@ -1,11 +1,9 @@
-use std::cell::Cell;
-
+use crate::bus::rom::Rom;
+use crate::bus::Bus;
 use crate::cpu::Cpu;
-use crate::memory::rom::Rom;
-use crate::memory::Memory;
 
 pub struct Gameboy {
-    memory: Memory,
+    bus: Bus,
     cpu: Cpu,
 }
 
@@ -14,25 +12,21 @@ impl Gameboy {
         let mut rom = Rom::new();
         rom.load_rom(path).unwrap();
 
-        let memory = Memory::new(rom);
+        let bus = Bus::new(rom);
         let gb = Gameboy {
-            memory,
-            cpu: Cpu::new(Cell::new(None)),
+            bus,
+            cpu: Cpu::new(),
         };
         gb
     }
 
-    pub fn connect_bus(&'static self) {
-        self.cpu.connect_memory(&self.memory);
-    }
-
     pub fn cycle(&mut self) {
         loop {
-            self.cpu.cycle();
+            self.cpu.cycle(&mut self.bus);
         }
     }
 
     pub fn get_rom(&self) -> &Rom {
-        self.memory.get_rom()
+        self.bus.get_rom()
     }
 }

@@ -4,15 +4,15 @@ mod wram;
 use rom::Rom;
 use wram::Wram;
 
-pub struct Memory {
+pub struct Bus {
     rom: Rom,
     wram: Wram,
 }
 
-impl Memory {
-    pub fn new(rom: Rom) -> Memory {
+impl Bus {
+    pub fn new(rom: Rom) -> Bus {
         let wram = Wram::new();
-        Memory { rom, wram }
+        Bus { rom, wram }
     }
 
     pub fn read(&self, address: u16) -> u8 {
