@@ -30,11 +30,17 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self, bus: &mut Bus) {
-        let instruction = self.read_byte(bus);
+        let instruction = self.fetch_instruction(bus);
         self.execute_instruction(instruction, bus);
     }
 
-    fn read_byte(&mut self, bus: &mut Bus) -> u8 {
+    fn fetch_instruction(&mut self, bus: &mut Bus) -> u8 {
+        let data = bus.read(self.pc);
+        self.increment_pc();
+        data
+    }
+
+    fn fetch_data(&mut self, bus: &mut Bus) -> u8 {
         let data = bus.read(self.pc);
         self.increment_pc();
         data
@@ -58,6 +64,8 @@ impl Cpu {
         match register {
             Register::A => self.af = (value as u16) << 8 | self.get_register(Register::F) as u16,
             Register::F => self.af = (self.get_register(Register::F) as u16) << 8 | (value as u16),
+            Register::B => self.af = (value as u16) << 8 | self.get_register(Register::C) as u16,
+            Register::C => self.bc = (self.get_register(Register::B) as u16) << 8 | (value as u16),
             _ => panic!("Not a valid register"),
         }
     }
@@ -81,6 +89,24 @@ impl Cpu {
             Flag::H => self.set_register(Register::F, 0b00100000 | f),
             Flag::C => self.set_register(Register::F, 0b00010000 | f),
             _ => panic!("Not a valid flag"),
+        };
+    }
+
+    fn unset_flag(&mut self, flag: Flag) {
+        let f = self.get_register(Register::F);
+        match flag {
+            Flag::Z => self.set_register(Register::F, 0b01111111 & f),
+            Flag::N => self.set_register(Register::F, 0b10111111 & f),
+            Flag::H => self.set_register(Register::F, 0b11011111 & f),
+            Flag::C => self.set_register(Register::F, 0b11101111 & f),
+            _ => panic!("Not a valid flag"),
+        };
+    }
+
+    fn check_z(&mut self, value: u8) {
+        match value {
+            0 => self.set_flag(Flag::Z),
+            _ => self.unset_flag(Flag::Z),
         };
     }
 
