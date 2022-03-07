@@ -1,6 +1,9 @@
 use crate::bus::Bus;
 
-use self::registers::{Flag, Register};
+use self::{
+    opcodes::AddressingMode,
+    registers::{Flag, Register},
+};
 
 mod opcodes;
 mod registers;
@@ -30,20 +33,28 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self, bus: &mut Bus) {
-        let instruction = self.fetch_instruction(bus);
+        let instruction = self.fetch_byte(bus);
         self.execute_instruction(instruction, bus);
     }
 
-    fn fetch_instruction(&mut self, bus: &mut Bus) -> u8 {
+    fn fetch_byte(&mut self, bus: &mut Bus) -> u8 {
         let data = bus.read(self.pc);
         self.increment_pc();
         data
     }
 
-    fn fetch_data(&mut self, bus: &mut Bus) -> u8 {
-        let data = bus.read(self.pc);
-        self.increment_pc();
-        data
+    fn fetch_data(&mut self, bus: &mut Bus, addressing_mode: AddressingMode) -> u16 {
+        match addressing_mode {
+            AddressingMode::D8 | AddressingMode::A8 | AddressingMode::R8 => {
+                return bus.read(self.pc) as u16;
+            }
+            AddressingMode::A16 | AddressingMode::D16 => {
+                let lo = self.fetch_byte(bus) as u16;
+                let hi = self.fetch_byte(bus) as u16;
+                return (hi << 8) | lo;
+            }
+            _ => panic!("No addressing mode specified"),
+        }
     }
 
     fn get_register(&self, register: Register) -> u8 {
@@ -66,6 +77,7 @@ impl Cpu {
             Register::F => self.af = (self.get_register(Register::F) as u16) << 8 | (value as u16),
             Register::B => self.af = (value as u16) << 8 | self.get_register(Register::C) as u16,
             Register::C => self.bc = (self.get_register(Register::B) as u16) << 8 | (value as u16),
+            Register::H => self.hl = (value as u16) << 8 | self.get_register(Register::L) as u16,
             _ => panic!("Not a valid register"),
         }
     }

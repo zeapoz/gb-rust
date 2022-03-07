@@ -5,8 +5,17 @@ use super::{
     Cpu,
 };
 
+pub enum AddressingMode {
+    D8,
+    D16,
+    A8,
+    A16,
+    R8,
+}
+
 impl Cpu {
     pub fn execute_instruction(&mut self, instruction: u8, bus: &mut Bus) {
+        println!("Executing instruction: 0x{:X}", instruction);
         match instruction {
             // NOP
             0x00 => return,
@@ -20,22 +29,36 @@ impl Cpu {
                 self.set_flag(Flag::N);
                 // TODO check H flag
             }
-            // Load B
+            // Load B with d8
             0x06 => {
-                let byte = self.fetch_data(bus);
+                let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
                 self.set_register(Register::B, byte);
             }
-            // Load C
+            // Load C with d8
             0x0E => {
-                let byte = self.fetch_data(bus);
+                let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
                 self.set_register(Register::C, byte);
             }
-            // Conditional relative jump if Z
-            0x21 => {
+            // Low power standy mode
+            0x10 => {
+                // TODO
+            }
+            // Load H with d8
+            0x16 => {
+                let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
+                self.set_register(Register::H, byte);
+            }
+            // Conditional relative jump if not Z
+            0x20 => {
                 if !self.get_flag(Flag::Z) {
-                    let byte = self.fetch_data(bus) as i8;
-                    self.pc = self.pc.wrapping_add(byte as u16);
+                    let byte = self.fetch_data(bus, AddressingMode::R8);
+                    self.pc = self.pc.wrapping_add(byte);
                 }
+            }
+            // Load HL with d16
+            0x21 => {
+                let bytes = self.fetch_data(bus, AddressingMode::D16);
+                self.hl = bytes;
             }
             // Load HL with A, decrement HL
             0x32 => {
@@ -55,9 +78,7 @@ impl Cpu {
             }
             // Jump to nn
             0xC3 => {
-                let lo = self.fetch_data(bus) as u16;
-                let hi = self.fetch_data(bus) as u16;
-                let address = (hi << 8) | lo;
+                let address = self.fetch_data(bus, AddressingMode::A16);
                 self.pc = address;
             }
             // Call to 18
