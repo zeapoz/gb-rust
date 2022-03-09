@@ -77,7 +77,10 @@ impl Cpu {
             Register::F => self.af = (self.get_register(Register::F) as u16) << 8 | (value as u16),
             Register::B => self.af = (value as u16) << 8 | self.get_register(Register::C) as u16,
             Register::C => self.bc = (self.get_register(Register::B) as u16) << 8 | (value as u16),
+            Register::D => self.de = (value as u16) << 8 | self.get_register(Register::E) as u16,
+            Register::E => self.bc = (self.get_register(Register::D) as u16) << 8 | (value as u16),
             Register::H => self.hl = (value as u16) << 8 | self.get_register(Register::L) as u16,
+            Register::L => self.bc = (self.get_register(Register::H) as u16) << 8 | (value as u16),
             _ => panic!("Not a valid register"),
         }
     }
@@ -120,6 +123,15 @@ impl Cpu {
             0 => self.set_flag(Flag::Z),
             _ => self.unset_flag(Flag::Z),
         };
+    }
+
+    fn check_h(&mut self, a: u8, b: i8) {
+        // Check to see if lower 4 bits will result in a carry
+        if (((a & 0x0F) + (b & 0x0F) as u8) & 0x10) == 0x10 {
+            self.set_flag(Flag::H);
+        } else {
+            self.unset_flag(Flag::H);
+        }
     }
 
     fn increment_pc(&mut self) {
