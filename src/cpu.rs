@@ -118,7 +118,7 @@ impl Cpu {
         };
     }
 
-    fn check_z(&mut self, value: u8) {
+    fn check_z(&mut self, value: u16) {
         match value {
             0 => self.set_flag(Flag::Z),
             _ => self.unset_flag(Flag::Z),
