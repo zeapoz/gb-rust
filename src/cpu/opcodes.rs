@@ -15,10 +15,18 @@ pub enum AddressingMode {
 
 impl Cpu {
     pub fn execute_instruction(&mut self, instruction: u8, bus: &mut Bus) {
-        println!("Executing instruction: 0x{:X}", instruction);
+        println!(
+            "0x{:02X}:  Executing instruction: 0x{:02X}",
+            self.pc - 1,
+            instruction
+        );
         match instruction {
             // NOP
             0x00 => return,
+            // Increment BC
+            0x03 => {
+                self.bc = self.bc.wrapping_add(1);
+            }
             // Decrement B
             0x05 => {
                 let mut b = self.get_register(Register::B);
@@ -61,6 +69,10 @@ impl Cpu {
                 let address = self.fetch_data(bus, AddressingMode::A16);
                 self.sp = address;
             }
+            // Load A with BC
+            0x0A => {
+                self.set_register(Register::A, self.bc as u8);
+            }
             // Increment C
             0x0C => {
                 let mut c = self.get_register(Register::C);
@@ -72,6 +84,17 @@ impl Cpu {
                 self.check_z(c as u16);
                 self.unset_flag(Flag::N);
             }
+            // Decrement C
+            0x0D => {
+                let mut c = self.get_register(Register::C);
+                self.check_h(c, -1);
+
+                c = c.wrapping_sub(1);
+                self.set_register(Register::C, c);
+
+                self.check_z(c as u16);
+                self.set_flag(Flag::N);
+            }
             // Load C with d8
             0x0E => {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -80,6 +103,15 @@ impl Cpu {
             // Low power standby mode
             0x10 => {
                 // TODO
+            }
+            // Load DE with d16
+            0x11 => {
+                let address = self.fetch_data(bus, AddressingMode::D16);
+                self.de = address;
+            }
+            // Load DE with A
+            0x12 => {
+                self.de = self.get_register(Register::A) as u16;
             }
             // Increment DE
             0x13 => {
@@ -102,7 +134,6 @@ impl Cpu {
                 self.check_h(d, -1);
 
                 d = d.wrapping_sub(1);
-
                 self.set_register(Register::D, d);
 
                 self.check_z(d as u16);
@@ -120,6 +151,23 @@ impl Cpu {
                 self.unset_flag(Flag::N);
                 self.check_h(self.hl as u8, self.de as i8);
                 // TODO check carry
+            }
+            // Decrement E
+            0x1D => {
+                let mut e = self.get_register(Register::E);
+                self.check_h(e, -1);
+
+                e = e.wrapping_sub(1);
+
+                self.set_register(Register::E, e);
+
+                self.check_z(e as u16);
+                self.set_flag(Flag::N);
+            }
+            // Load E with d8
+            0x1E => {
+                let data = self.fetch_data(bus, AddressingMode::D8) as u8;
+                self.set_register(Register::E, data);
             }
             // Rotate A right through carry
             0x1F => {
@@ -152,6 +200,21 @@ impl Cpu {
             0x21 => {
                 let bytes = self.fetch_data(bus, AddressingMode::D16);
                 self.hl = bytes;
+            }
+            // Increment HL
+            0x23 => {
+                self.hl = self.hl.wrapping_add(1);
+            }
+            // Increment H
+            0x24 => {
+                let mut h = self.get_register(Register::H);
+                self.check_h(h, 1);
+
+                h = h.wrapping_add(1);
+                self.set_register(Register::H, h);
+
+                self.check_z(h as u16);
+                self.unset_flag(Flag::N);
             }
             // Decrement H
             0x25 => {
@@ -188,10 +251,67 @@ impl Cpu {
                 let address = self.fetch_data(bus, AddressingMode::D16);
                 self.sp = address;
             }
+
+            // TODO Refactor load in seperate method
+
             // Load HL with A, decrement HL
             0x32 => {
                 self.hl = self.get_register(Register::A) as u16;
                 self.hl = self.hl.wrapping_sub(1);
+            }
+            // Load B with C
+            0x41 => {
+                let c = self.get_register(Register::C);
+                self.set_register(Register::B, c);
+            }
+            // Load H with B
+            0x60 => {
+                let b = self.get_register(Register::B);
+                self.set_register(Register::H, b);
+            }
+            // Load H with C
+            0x61 => {
+                let c = self.get_register(Register::C);
+                self.set_register(Register::H, c);
+            }
+            // Load H with D
+            0x62 => {
+                let d = self.get_register(Register::D);
+                self.set_register(Register::H, d);
+            }
+            // Load H with E
+            0x63 => {
+                let e = self.get_register(Register::E);
+                self.set_register(Register::H, e);
+            }
+            // Load H with H
+            0x64 => {
+                let h = self.get_register(Register::H);
+                self.set_register(Register::H, h);
+            }
+            // Load H with L
+            0x65 => {
+                let l = self.get_register(Register::L);
+                self.set_register(Register::H, l);
+            }
+            // Load H with HL
+            0x66 => {
+                self.set_register(Register::H, self.hl as u8);
+            }
+            // Load H with A
+            0x67 => {
+                let a = self.get_register(Register::A);
+                self.set_register(Register::H, a);
+            }
+            // Load L with B
+            0x68 => {
+                let b = self.get_register(Register::B);
+                self.set_register(Register::L, b);
+            }
+            // Load L with C
+            0x69 => {
+                let c = self.get_register(Register::C);
+                self.set_register(Register::L, c);
             }
             // Load HL with B
             0x70 => {
@@ -224,6 +344,33 @@ impl Cpu {
                 self.check_h(self.hl as u8, self.de as i8);
                 // TODO check carry
             }
+            // Add D to A with carry
+            0x8A => {
+                let d = self.get_register(Register::D);
+                let mut a = self.get_register(Register::A);
+                let carry = self.get_flag(Flag::C) as u8;
+
+                a = a.wrapping_add(d + carry);
+                self.set_register(Register::A, a);
+
+                self.check_z(a as u16);
+                self.unset_flag(Flag::N);
+                self.check_h(a, d as i8);
+                // TODO check carry
+            }
+            // Subtract E from A
+            0x93 => {
+                let e = self.get_register(Register::E);
+                let mut a = self.get_register(Register::A);
+                self.check_h(a, e as i8);
+
+                a = a.wrapping_sub(e);
+                self.set_register(Register::A, a);
+
+                self.check_z(a as u16);
+                self.set_flag(Flag::N);
+                // TODO check carry
+            }
             // Set A = A XOR A
             0xAF => {
                 let a = self.get_register(Register::A);
@@ -247,6 +394,18 @@ impl Cpu {
                 self.unset_flag(Flag::H);
                 self.unset_flag(Flag::C);
             }
+            // OR E
+            0xB3 => {
+                let a = self.get_register(Register::A);
+                let e = self.get_register(Register::E);
+                let value = a | e;
+                self.set_register(Register::A, value);
+
+                self.check_z(value as u16);
+                self.unset_flag(Flag::N);
+                self.unset_flag(Flag::H);
+                self.unset_flag(Flag::C);
+            }
             // Compare A
             0xBF => {
                 let a = self.get_register(Register::A);
@@ -260,22 +419,51 @@ impl Cpu {
                 let address = self.fetch_data(bus, AddressingMode::A16);
                 self.pc = address;
             }
+            // RST 00H
+            0xC7 => {
+                // TODO
+            }
+            // Add d8 to A with carry
+            0xCE => {
+                let data = self.fetch_data(bus, AddressingMode::D8) as u8;
+                let mut a = self.get_register(Register::A);
+                let carry = self.get_flag(Flag::C) as u8;
+
+                a = a.wrapping_add(data + carry);
+                self.set_register(Register::A, a);
+
+                self.check_z(a as u16);
+                self.unset_flag(Flag::N);
+                self.check_h(a, data as i8);
+                // TODO check carry
+            }
+            // Jump if C
+            0xD2 => {
+                if self.get_flag(Flag::C) {
+                    let address = self.fetch_data(bus, AddressingMode::A16);
+                    self.pc = address;
+                }
+            }
             // Call to 18
             0xDF => {
                 // TODO
             }
             // Jump to HL
             0xE9 => self.pc = self.hl,
+            // RST 30H
+            0xF7 => {
+                // TODO
+            }
             // Call to 38
             0xFF => {
                 // TODO
             }
             // BLANKS temporary catch
-            0xEB => {
+            0xFC | 0xEB => {
                 return;
             }
             _ => panic!(
-                "Invalid instruction read: 0x{:X} at 0x{:X}",
+                "Invalid instruction read: 0x{:02X} at 0x{:02X}",
                 instruction,
                 self.pc - 1
             ),
