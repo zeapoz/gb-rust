@@ -152,6 +152,8 @@ impl Cpu {
                 self.check_h(self.hl as u8, self.de as i8);
                 // TODO check carry
             }
+            // Decrement DE
+            0x1B => self.de = self.de.wrapping_sub(1),
             // Decrement E
             0x1D => {
                 let mut e = self.get_register(Register::E);
@@ -227,6 +229,10 @@ impl Cpu {
                 self.check_z(h as u16);
                 self.set_flag(Flag::N);
             }
+            // Decimal adjust A
+            0x27 => {
+                // TODO
+            }
             // Add HL to HL
             0x29 => {
                 self.hl = self.hl.wrapping_add(self.hl);
@@ -251,88 +257,83 @@ impl Cpu {
                 let address = self.fetch_data(bus, AddressingMode::D16);
                 self.sp = address;
             }
-
-            // TODO Refactor load in seperate method
-
             // Load HL with A, decrement HL
             0x32 => {
                 self.hl = self.get_register(Register::A) as u16;
                 self.hl = self.hl.wrapping_sub(1);
             }
-            // Load B with C
-            0x41 => {
-                let c = self.get_register(Register::C);
-                self.set_register(Register::B, c);
-            }
-            // Load H with B
-            0x60 => {
-                let b = self.get_register(Register::B);
-                self.set_register(Register::H, b);
-            }
-            // Load H with C
-            0x61 => {
-                let c = self.get_register(Register::C);
-                self.set_register(Register::H, c);
-            }
-            // Load H with D
-            0x62 => {
-                let d = self.get_register(Register::D);
-                self.set_register(Register::H, d);
-            }
-            // Load H with E
-            0x63 => {
-                let e = self.get_register(Register::E);
-                self.set_register(Register::H, e);
-            }
-            // Load H with H
-            0x64 => {
-                let h = self.get_register(Register::H);
-                self.set_register(Register::H, h);
-            }
-            // Load H with L
-            0x65 => {
-                let l = self.get_register(Register::L);
-                self.set_register(Register::H, l);
-            }
-            // Load H with HL
-            0x66 => {
-                self.set_register(Register::H, self.hl as u8);
-            }
-            // Load H with A
-            0x67 => {
-                let a = self.get_register(Register::A);
-                self.set_register(Register::H, a);
-            }
-            // Load L with B
-            0x68 => {
-                let b = self.get_register(Register::B);
-                self.set_register(Register::L, b);
-            }
-            // Load L with C
-            0x69 => {
-                let c = self.get_register(Register::C);
-                self.set_register(Register::L, c);
-            }
-            // Load HL with B
-            0x70 => {
-                let b = self.get_register(Register::B);
-                self.hl = b as u16;
-            }
-            // Load HL with A
-            0x77 => {
-                let a = self.get_register(Register::A);
-                self.hl = a as u16;
-            }
-            // Load A with D
-            0x7A => {
-                let d = self.get_register(Register::D);
-                self.set_register(Register::A, d);
-            }
-            // Load A with E
-            0x7B => {
-                let e = self.get_register(Register::E);
-                self.set_register(Register::A, e);
-            }
+            // B loads
+            0x40 => self.load(Register::B, Register::B),
+            0x41 => self.load(Register::B, Register::C),
+            0x42 => self.load(Register::B, Register::D),
+            0x43 => self.load(Register::B, Register::E),
+            0x44 => self.load(Register::B, Register::H),
+            0x45 => self.load(Register::B, Register::L),
+            0x46 => self.load(Register::B, Register::HL),
+            0x47 => self.load(Register::B, Register::A),
+            // C loads
+            0x48 => self.load(Register::C, Register::B),
+            0x49 => self.load(Register::C, Register::C),
+            0x4A => self.load(Register::C, Register::D),
+            0x4B => self.load(Register::C, Register::E),
+            0x4C => self.load(Register::C, Register::H),
+            0x4D => self.load(Register::C, Register::L),
+            0x4E => self.load(Register::C, Register::HL),
+            0x4F => self.load(Register::C, Register::A),
+            // D loads
+            0x50 => self.load(Register::D, Register::B),
+            0x51 => self.load(Register::D, Register::C),
+            0x52 => self.load(Register::D, Register::D),
+            0x53 => self.load(Register::D, Register::E),
+            0x54 => self.load(Register::D, Register::H),
+            0x55 => self.load(Register::D, Register::L),
+            0x56 => self.load(Register::D, Register::HL),
+            0x57 => self.load(Register::D, Register::A),
+            // E loads
+            0x58 => self.load(Register::E, Register::B),
+            0x59 => self.load(Register::E, Register::C),
+            0x5A => self.load(Register::E, Register::D),
+            0x5B => self.load(Register::E, Register::E),
+            0x5C => self.load(Register::E, Register::H),
+            0x5D => self.load(Register::E, Register::L),
+            0x5E => self.load(Register::E, Register::HL),
+            0x5F => self.load(Register::E, Register::A),
+            // H loads
+            0x60 => self.load(Register::H, Register::B),
+            0x61 => self.load(Register::H, Register::C),
+            0x62 => self.load(Register::H, Register::D),
+            0x63 => self.load(Register::H, Register::E),
+            0x64 => self.load(Register::H, Register::H),
+            0x65 => self.load(Register::H, Register::L),
+            0x66 => self.load(Register::H, Register::HL),
+            0x67 => self.load(Register::H, Register::A),
+            // L loads
+            0x68 => self.load(Register::L, Register::B),
+            0x69 => self.load(Register::L, Register::C),
+            0x6A => self.load(Register::L, Register::D),
+            0x6B => self.load(Register::L, Register::E),
+            0x6C => self.load(Register::L, Register::H),
+            0x6D => self.load(Register::L, Register::L),
+            0x6E => self.load(Register::L, Register::HL),
+            0x6F => self.load(Register::L, Register::A),
+            // HL loads
+            0x70 => self.load(Register::HL, Register::B),
+            0x71 => self.load(Register::HL, Register::C),
+            0x72 => self.load(Register::HL, Register::D),
+            0x73 => self.load(Register::HL, Register::E),
+            0x74 => self.load(Register::HL, Register::H),
+            0x75 => self.load(Register::HL, Register::L),
+            // Halt instruction 0x76 inbetween
+            0x77 => self.load(Register::HL, Register::A),
+            // A loads
+            0x78 => self.load(Register::A, Register::B),
+            0x79 => self.load(Register::A, Register::C),
+            0x7A => self.load(Register::A, Register::D),
+            0x7B => self.load(Register::A, Register::E),
+            0x7C => self.load(Register::A, Register::H),
+            0x7D => self.load(Register::A, Register::L),
+            0x7E => self.load(Register::A, Register::HL),
+            0x7F => self.load(Register::A, Register::A),
             // Add B to A
             0x80 => {
                 let b = self.get_register(Register::B);
@@ -371,41 +372,33 @@ impl Cpu {
                 self.set_flag(Flag::N);
                 // TODO check carry
             }
-            // Set A = A XOR A
-            0xAF => {
-                let a = self.get_register(Register::A);
-                let value = a ^ a;
-                self.set_register(Register::A, value);
-
-                self.check_z(value as u16);
-                self.unset_flag(Flag::N);
-                self.unset_flag(Flag::H);
-                self.unset_flag(Flag::C);
-            }
-            // OR B
-            0xB0 => {
-                let a = self.get_register(Register::A);
-                let b = self.get_register(Register::B);
-                let value = a | b;
-                self.set_register(Register::A, value);
-
-                self.check_z(value as u16);
-                self.unset_flag(Flag::N);
-                self.unset_flag(Flag::H);
-                self.unset_flag(Flag::C);
-            }
-            // OR E
-            0xB3 => {
-                let a = self.get_register(Register::A);
-                let e = self.get_register(Register::E);
-                let value = a | e;
-                self.set_register(Register::A, value);
-
-                self.check_z(value as u16);
-                self.unset_flag(Flag::N);
-                self.unset_flag(Flag::H);
-                self.unset_flag(Flag::C);
-            }
+            // AND operations
+            0xA0 => self.and(Register::B),
+            0xA1 => self.and(Register::C),
+            0xA2 => self.and(Register::D),
+            0xA3 => self.and(Register::E),
+            0xA4 => self.and(Register::H),
+            0xA5 => self.and(Register::L),
+            0xA6 => self.and(Register::HL),
+            0xA7 => self.and(Register::A),
+            // XOR operations
+            0xA8 => self.xor(Register::B),
+            0xA9 => self.xor(Register::C),
+            0xAA => self.xor(Register::D),
+            0xAB => self.xor(Register::E),
+            0xAC => self.xor(Register::H),
+            0xAD => self.xor(Register::L),
+            0xAE => self.xor(Register::HL),
+            0xAF => self.xor(Register::A),
+            // OR operations
+            0xB0 => self.or(Register::B),
+            0xB1 => self.or(Register::C),
+            0xB2 => self.or(Register::D),
+            0xB3 => self.or(Register::E),
+            0xB4 => self.or(Register::H),
+            0xB5 => self.or(Register::L),
+            0xB6 => self.or(Register::HL),
+            0xB7 => self.or(Register::A),
             // Compare A
             0xBF => {
                 let a = self.get_register(Register::A);
@@ -422,6 +415,12 @@ impl Cpu {
             // RST 00H
             0xC7 => {
                 // TODO
+            }
+            // Call to 16
+            0xCD => {
+                self.sp = self.sp.wrapping_sub(2);
+                // TODO push pc to stack
+                self.pc = self.fetch_data(bus, AddressingMode::A16);
             }
             // Add d8 to A with carry
             0xCE => {
@@ -448,8 +447,16 @@ impl Cpu {
             0xDF => {
                 // TODO
             }
+            // Push HL
+            0xE5 => {
+                // TODO
+            }
             // Jump to HL
             0xE9 => self.pc = self.hl,
+            // Load a16 with A
+            0xEA => {
+                // TODO
+            }
             // RST 30H
             0xF7 => {
                 // TODO
@@ -468,5 +475,46 @@ impl Cpu {
                 self.pc - 1
             ),
         }
+    }
+
+    fn load(&mut self, reg1: Register, reg2: Register) {
+        let r = self.get_register(reg2);
+        self.set_register(reg1, r)
+    }
+
+    fn and(&mut self, reg: Register) {
+        let a = self.get_register(Register::A);
+        let r = self.get_register(reg);
+        let value = a & r;
+        self.set_register(Register::A, value);
+
+        self.check_z(value as u16);
+        self.unset_flag(Flag::N);
+        self.set_flag(Flag::H);
+        self.unset_flag(Flag::C);
+    }
+
+    fn xor(&mut self, reg: Register) {
+        let a = self.get_register(Register::A);
+        let r = self.get_register(reg);
+        let value = a ^ a;
+        self.set_register(Register::A, value);
+
+        self.check_z(value as u16);
+        self.unset_flag(Flag::N);
+        self.unset_flag(Flag::H);
+        self.unset_flag(Flag::C);
+    }
+
+    fn or(&mut self, reg: Register) {
+        let a = self.get_register(Register::A);
+        let r = self.get_register(reg);
+        let value = a | r;
+        self.set_register(Register::A, value);
+
+        self.check_z(value as u16);
+        self.unset_flag(Flag::N);
+        self.unset_flag(Flag::H);
+        self.unset_flag(Flag::C);
     }
 }
