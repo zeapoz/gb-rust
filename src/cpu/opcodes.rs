@@ -23,6 +23,11 @@ impl Cpu {
         match instruction {
             // NOP
             0x00 => return,
+            // Load BC with d16
+            0x01 => {
+                let value = self.fetch_data(bus, AddressingMode::D16);
+                self.bc = value;
+            }
             // Increment BC
             0x03 => {
                 self.bc = self.bc.wrapping_add(1);
@@ -72,6 +77,10 @@ impl Cpu {
             // Load A with BC
             0x0A => {
                 self.set_register(Register::A, self.bc as u8);
+            }
+            // Decrement BC
+            0x0B => {
+                self.bc = self.bc.wrapping_sub(1);
             }
             // Increment C
             0x0C => {
@@ -144,6 +153,11 @@ impl Cpu {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
                 self.set_register(Register::H, byte);
             }
+            // Relative jump to r8
+            0x18 => {
+                let address = self.fetch_data(bus, AddressingMode::R8) as i8;
+                self.pc = self.pc.wrapping_add(address as u16);
+            }
             // Add DE to HL
             0x19 => {
                 self.hl = self.hl.wrapping_add(self.de);
@@ -152,6 +166,8 @@ impl Cpu {
                 self.check_h(self.hl as u8, self.de as i8);
                 // TODO check carry
             }
+            // Load A with DE
+            0x1A => self.load(Register::A, Register::DE),
             // Decrement DE
             0x1B => self.de = self.de.wrapping_sub(1),
             // Decrement E
@@ -233,6 +249,13 @@ impl Cpu {
             0x27 => {
                 // TODO
             }
+            // Relative jump if Z
+            0x28 => {
+                if self.get_flag(Flag::Z) {
+                    let address = self.fetch_data(bus, AddressingMode::R8) as i8;
+                    self.pc = self.pc.wrapping_add(address as u16);
+                }
+            }
             // Add HL to HL
             0x29 => {
                 self.hl = self.hl.wrapping_add(self.hl);
@@ -240,6 +263,11 @@ impl Cpu {
                 self.unset_flag(Flag::N);
                 self.check_h(self.hl as u8, self.hl as i8);
                 // TODO check carry
+            }
+            // Load A with HL, increment HL
+            0x2A => {
+                self.load(Register::A, Register::HL);
+                self.hl = self.hl.wrapping_add(1);
             }
             // Increment L
             0x2C => {
@@ -261,6 +289,11 @@ impl Cpu {
             0x32 => {
                 self.hl = self.get_register(Register::A) as u16;
                 self.hl = self.hl.wrapping_sub(1);
+            }
+            // Load A with d8
+            0x3E => {
+                let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
+                self.set_register(Register::A, byte);
             }
             // B loads
             0x40 => self.load(Register::B, Register::B),
@@ -359,19 +392,15 @@ impl Cpu {
                 self.check_h(a, d as i8);
                 // TODO check carry
             }
-            // Subtract E from A
-            0x93 => {
-                let e = self.get_register(Register::E);
-                let mut a = self.get_register(Register::A);
-                self.check_h(a, e as i8);
-
-                a = a.wrapping_sub(e);
-                self.set_register(Register::A, a);
-
-                self.check_z(a as u16);
-                self.set_flag(Flag::N);
-                // TODO check carry
-            }
+            // SUB operations
+            0x90 => self.sub(Register::B),
+            0x91 => self.sub(Register::C),
+            0x92 => self.sub(Register::D),
+            0x93 => self.sub(Register::E),
+            0x94 => self.sub(Register::H),
+            0x95 => self.sub(Register::L),
+            0x96 => self.sub(Register::HL),
+            0x97 => self.sub(Register::A),
             // AND operations
             0xA0 => self.and(Register::B),
             0xA1 => self.and(Register::C),
@@ -407,6 +436,12 @@ impl Cpu {
                 self.set_flag(Flag::N);
                 // TODO Check carry
             }
+            // Return if not Z
+            0xC0 => {
+                if !self.get_flag(Flag::Z) {
+                    self.pc = self.pop_stack();
+                }
+            }
             // Jump to nn
             0xC3 => {
                 let address = self.fetch_data(bus, AddressingMode::A16);
@@ -416,12 +451,16 @@ impl Cpu {
             0xC7 => {
                 // TODO
             }
-            // Call to 16
-            0xCD => {
-                self.sp = self.sp.wrapping_sub(2);
-                // TODO push pc to stack
-                self.pc = self.fetch_data(bus, AddressingMode::A16);
+            // Return if Z
+            0xC8 => {
+                if self.get_flag(Flag::Z) {
+                    self.pc = self.pop_stack();
+                }
             }
+            // Return
+            0xC9 => self.pc = self.pop_stack(),
+            // Call to a16
+            0xCD => self.call(bus),
             // Add d8 to A with carry
             0xCE => {
                 let data = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -482,6 +521,18 @@ impl Cpu {
         self.set_register(reg1, r)
     }
 
+    fn sub(&mut self, reg: Register) {
+        let a = self.get_register(Register::A);
+        let r = self.get_register(reg);
+        let value = a.wrapping_sub(r);
+        self.set_register(Register::A, value);
+
+        self.check_z(value as u16);
+        self.set_flag(Flag::N);
+        self.check_h(a, r as i8);
+        // TODO check carry
+    }
+
     fn and(&mut self, reg: Register) {
         let a = self.get_register(Register::A);
         let r = self.get_register(reg);
@@ -497,7 +548,7 @@ impl Cpu {
     fn xor(&mut self, reg: Register) {
         let a = self.get_register(Register::A);
         let r = self.get_register(reg);
-        let value = a ^ a;
+        let value = a ^ r;
         self.set_register(Register::A, value);
 
         self.check_z(value as u16);
@@ -516,5 +567,12 @@ impl Cpu {
         self.unset_flag(Flag::N);
         self.unset_flag(Flag::H);
         self.unset_flag(Flag::C);
+    }
+
+    fn call(&mut self, bus: &mut Bus) {
+        let address = self.fetch_data(bus, AddressingMode::A16);
+        self.sp = self.sp.wrapping_sub(2);
+        self.push_stack(self.pc);
+        self.pc = address;
     }
 }

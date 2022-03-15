@@ -36,6 +36,7 @@ impl Cpu {
             Register::E => return (LO & self.de) as u8,
             Register::H => return ((HI & self.hl) >> 8) as u8,
             Register::L => return (LO & self.hl) as u8,
+            Register::DE => return self.de as u8,
             Register::HL => return self.hl as u8,
             _ => panic!("Not a valid register"),
         }

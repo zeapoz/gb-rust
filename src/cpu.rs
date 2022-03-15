@@ -12,6 +12,7 @@ pub struct Cpu {
     hl: u16,
     sp: u16,
     pc: u16,
+    stack: [u8; 65536],
 }
 
 impl Cpu {
@@ -23,6 +24,7 @@ impl Cpu {
             hl: 0,
             sp: 0,
             pc: 0x100,
+            stack: [0; 65536],
         }
     }
 
@@ -49,6 +51,20 @@ impl Cpu {
             }
             _ => panic!("No addressing mode specified"),
         }
+    }
+
+    fn push_stack(&mut self, address: u16) {
+        let lo = (address & 0x00FF) as u8;
+        let hi = (address >> 8) as u8;
+        self.stack[self.sp as usize] = lo;
+        self.stack[(self.sp + 1) as usize] = hi;
+    }
+
+    fn pop_stack(&mut self) -> u16 {
+        let lo = self.stack[self.sp as usize] as u16;
+        let hi = self.stack[(self.sp + 1) as usize] as u16;
+        self.sp = self.sp.wrapping_add(2);
+        (hi << 8) | lo
     }
 
     fn check_z(&mut self, value: u16) {
