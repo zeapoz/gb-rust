@@ -1,10 +1,12 @@
 use crate::bus::rom::Rom;
 use crate::bus::Bus;
 use crate::cpu::Cpu;
+use crate::ppu::Ppu;
 
 pub struct Gameboy {
     bus: Bus,
     cpu: Cpu,
+    ppu: Ppu,
 }
 
 impl Gameboy {
@@ -16,6 +18,7 @@ impl Gameboy {
         let gb = Gameboy {
             bus,
             cpu: Cpu::new(),
+            ppu: Ppu::new(),
         };
         gb
     }

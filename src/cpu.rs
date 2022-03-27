@@ -13,6 +13,7 @@ pub struct Cpu {
     sp: u16,
     pc: u16,
     stack: [u8; 65536],
+    halted: bool,
 }
 
 impl Cpu {
@@ -25,10 +26,14 @@ impl Cpu {
             sp: 0,
             pc: 0x100,
             stack: [0; 65536],
+            halted: false,
         }
     }
 
     pub fn cycle(&mut self, bus: &mut Bus) {
+        if self.halted {
+            return;
+        }
         let instruction = self.fetch_byte(bus);
         self.execute_instruction(instruction, bus);
     }
@@ -56,14 +61,19 @@ impl Cpu {
     fn push_stack(&mut self, address: u16) {
         let lo = (address & 0x00FF) as u8;
         let hi = (address >> 8) as u8;
-        self.stack[self.sp as usize] = lo;
-        self.stack[(self.sp + 1) as usize] = hi;
+        self.sp = self.sp.wrapping_sub(1);
+        self.stack[self.sp as usize] = hi;
+
+        self.sp = self.sp.wrapping_sub(1);
+        self.stack[(self.sp + 1) as usize] = lo;
     }
 
     fn pop_stack(&mut self) -> u16 {
         let lo = self.stack[self.sp as usize] as u16;
-        let hi = self.stack[(self.sp + 1) as usize] as u16;
-        self.sp = self.sp.wrapping_add(2);
+        self.sp = self.sp.wrapping_add(1);
+
+        let hi = self.stack[self.sp as usize] as u16;
+        self.sp = self.sp.wrapping_add(1);
         (hi << 8) | lo
     }
 

@@ -277,6 +277,8 @@ impl Cpu {
             0x74 => self.load(Register::HL, Register::H),
             0x75 => self.load(Register::HL, Register::L),
             // Halt instruction 0x76 inbetween
+            0x76 => self.halted = true,
+
             0x77 => self.load(Register::HL, Register::A),
             // A loads
             0x78 => self.load(Register::A, Register::B),
@@ -358,7 +360,7 @@ impl Cpu {
             // Return if not Z
             0xC0 => {
                 if !self.get_flag(Flag::Z) {
-                    self.pc = self.pop_stack();
+                    self.ret();
                 }
             }
             // Jump to nn
@@ -373,11 +375,11 @@ impl Cpu {
             // Return if Z
             0xC8 => {
                 if self.get_flag(Flag::Z) {
-                    self.pc = self.pop_stack();
+                    self.ret();
                 }
             }
             // Return
-            0xC9 => self.pc = self.pop_stack(),
+            0xC9 => self.ret(),
             // Prefix CB
             0xCB => {
                 // TODO lookup table
@@ -546,8 +548,12 @@ impl Cpu {
 
     fn call(&mut self, bus: &mut Bus) {
         let address = self.fetch_data(bus, AddressingMode::A16);
-        self.sp = self.sp.wrapping_sub(2);
         self.push_stack(self.pc);
+        self.pc = address;
+    }
+
+    fn ret(&mut self) {
+        let address = self.pop_stack();
         self.pc = address;
     }
 }

@@ -64,7 +64,6 @@ impl Cpu {
             Flag::N => return (0b01000000 & f) != 0,
             Flag::H => return (0b00100000 & f) != 0,
             Flag::C => return (0b00010000 & f) != 0,
-            _ => panic!("Not a valid flag"),
         }
     }
 
@@ -75,7 +74,6 @@ impl Cpu {
             Flag::N => self.set_register(Register::F, 0b01000000 | f),
             Flag::H => self.set_register(Register::F, 0b00100000 | f),
             Flag::C => self.set_register(Register::F, 0b00010000 | f),
-            _ => panic!("Not a valid flag"),
         };
     }
 
@@ -86,7 +84,6 @@ impl Cpu {
             Flag::N => self.set_register(Register::F, 0b10111111 & f),
             Flag::H => self.set_register(Register::F, 0b11011111 & f),
             Flag::C => self.set_register(Register::F, 0b11101111 & f),
-            _ => panic!("Not a valid flag"),
         };
     }
 }
