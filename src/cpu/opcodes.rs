@@ -5,6 +5,11 @@ use super::{
     Cpu,
 };
 
+pub enum FetchTarget {
+    Data(AddressingMode),
+    Reg(Register),
+}
+
 pub enum AddressingMode {
     D8,
     D16,
@@ -38,8 +43,8 @@ impl Cpu {
                 self.bc = self.bc.wrapping_add(1);
             }
             // INC DEC B
-            0x04 => self.inc(Register::B),
-            0x05 => self.dec(Register::B),
+            0x04 => self.inc(FetchTarget::Reg(Register::B)),
+            0x05 => self.dec(FetchTarget::Reg(Register::B)),
             // Load B with d8
             0x06 => {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -79,8 +84,8 @@ impl Cpu {
                 self.bc = self.bc.wrapping_sub(1);
             }
             // INC DEC C
-            0x0C => self.inc(Register::C),
-            0x0D => self.dec(Register::C),
+            0x0C => self.inc(FetchTarget::Reg(Register::C)),
+            0x0D => self.dec(FetchTarget::Reg(Register::C)),
             // Load C with d8
             0x0E => {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -101,8 +106,8 @@ impl Cpu {
             // Increment DE
             0x13 => self.de = self.de.wrapping_add(1),
             // INC DEC D
-            0x14 => self.inc(Register::D),
-            0x15 => self.dec(Register::D),
+            0x14 => self.inc(FetchTarget::Reg(Register::D)),
+            0x15 => self.dec(FetchTarget::Reg(Register::D)),
             // Load H with d8
             0x16 => {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -124,8 +129,8 @@ impl Cpu {
             // Decrement DE
             0x1B => self.de = self.de.wrapping_sub(1),
             // INC DEC E
-            0x1C => self.inc(Register::E),
-            0x1D => self.dec(Register::E),
+            0x1C => self.inc(FetchTarget::Reg(Register::E)),
+            0x1D => self.dec(FetchTarget::Reg(Register::E)),
             // Load E with d8
             0x1E => {
                 let data = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -168,8 +173,8 @@ impl Cpu {
                 self.hl = self.hl.wrapping_add(1);
             }
             // INC DEC H
-            0x24 => self.inc(Register::H),
-            0x25 => self.dec(Register::H),
+            0x24 => self.inc(FetchTarget::Reg(Register::H)),
+            0x25 => self.dec(FetchTarget::Reg(Register::H)),
             // Decimal adjust A
             0x27 => {
                 // TODO
@@ -195,8 +200,8 @@ impl Cpu {
                 self.hl = self.hl.wrapping_add(1);
             }
             // INC DEC L
-            0x2C => self.inc(Register::L),
-            0x2D => self.dec(Register::L),
+            0x2C => self.inc(FetchTarget::Reg(Register::L)),
+            0x2D => self.dec(FetchTarget::Reg(Register::L)),
             // LD SP with d16
             0x31 => {
                 let address = self.fetch_data(bus, AddressingMode::D16);
@@ -208,8 +213,8 @@ impl Cpu {
                 self.hl = self.hl.wrapping_sub(1);
             }
             // INC DEC A
-            0x3C => self.inc(Register::A),
-            0x3D => self.dec(Register::A),
+            0x3C => self.inc(FetchTarget::Reg(Register::A)),
+            0x3D => self.dec(FetchTarget::Reg(Register::A)),
             // Load A with d8
             0x3E => {
                 let byte = self.fetch_data(bus, AddressingMode::D8) as u8;
@@ -290,14 +295,14 @@ impl Cpu {
             0x7E => self.load(Register::A, Register::HL),
             0x7F => self.load(Register::A, Register::A),
             // ADD operations
-            0x80 => self.add(Register::B),
-            0x81 => self.add(Register::C),
-            0x82 => self.add(Register::D),
-            0x83 => self.add(Register::E),
-            0x84 => self.add(Register::H),
-            0x85 => self.add(Register::L),
-            0x86 => self.add(Register::HL),
-            0x87 => self.add(Register::A),
+            0x80 => self.add(FetchTarget::Reg(Register::B), bus),
+            0x81 => self.add(FetchTarget::Reg(Register::C), bus),
+            0x82 => self.add(FetchTarget::Reg(Register::D), bus),
+            0x83 => self.add(FetchTarget::Reg(Register::E), bus),
+            0x84 => self.add(FetchTarget::Reg(Register::H), bus),
+            0x85 => self.add(FetchTarget::Reg(Register::L), bus),
+            0x86 => self.add(FetchTarget::Reg(Register::HL), bus),
+            0x87 => self.add(FetchTarget::Reg(Register::A), bus),
             // Add D to A with carry
             0x8A => {
                 let d = self.get_register(&Register::D);
@@ -449,27 +454,32 @@ impl Cpu {
         }
     }
 
-    fn inc(&mut self, reg: Register) {
-        let mut value = self.get_register(&reg);
-        self.check_h(value, 1);
-
-        value = value.wrapping_add(1);
-        self.set_register(reg, value);
-
-        self.check_z(value as u16);
-        self.unset_flag(Flag::N);
+    fn inc(&mut self, target: FetchTarget) {
+        match target {
+            FetchTarget::Data(_) => panic!("tried to inc address."),
+            FetchTarget::Reg(r) => {
+                let mut value = self.get_register(&r);
+                self.check_h(value, 1);
+                value = value.wrapping_add(1);
+                self.set_register(r, value);
+                self.check_z(value as u16);
+                self.unset_flag(Flag::N);
+            }
+        }
     }
 
-    fn dec(&mut self, reg: Register) {
-        let mut value = self.get_register(&reg);
-        self.check_h(value, -1);
-
-        value = value.wrapping_sub(1);
-
-        self.set_register(reg, value);
-
-        self.check_z(value as u16);
-        self.set_flag(Flag::N);
+    fn dec(&mut self, target: FetchTarget) {
+        match target {
+            FetchTarget::Data(_) => panic!("tried to dec address."),
+            FetchTarget::Reg(r) => {
+                let mut value = self.get_register(&r);
+                self.check_h(value, -1);
+                value = value.wrapping_sub(1);
+                self.set_register(r, value);
+                self.check_z(value as u16);
+                self.set_flag(Flag::N);
+            }
+        }
     }
 
     fn load(&mut self, reg1: Register, reg2: Register) {
@@ -477,16 +487,28 @@ impl Cpu {
         self.set_register(reg1, r)
     }
 
-    fn add(&mut self, reg: Register) {
+    fn add(&mut self, target: FetchTarget, bus: &mut Bus) {
         let a = self.get_register(&Register::A);
-        let r = self.get_register(&reg);
-        let value = a.wrapping_add(r);
-        self.set_register(Register::A, value);
-
-        self.check_z(value as u16);
-        self.unset_flag(Flag::N);
-        self.check_h(a, r as i8);
-        // TODO check carry
+        match target {
+            FetchTarget::Data(d) => {
+                let d = self.fetch_data(bus, d);
+                let value = a.wrapping_add(d as u8);
+                self.set_register(Register::A, value);
+                self.check_z(value as u16);
+                self.unset_flag(Flag::N);
+                self.check_h(a, d as i8);
+                self.check_c(a, d as u8);
+            }
+            FetchTarget::Reg(r) => {
+                let r = self.get_register(&r);
+                let value = a.wrapping_add(r);
+                self.set_register(Register::A, value);
+                self.check_z(value as u16);
+                self.unset_flag(Flag::N);
+                self.check_h(a, r as i8);
+                self.check_c(a, r);
+            }
+        }
     }
 
     fn sub(&mut self, reg: Register) {

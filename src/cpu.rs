@@ -54,7 +54,6 @@ impl Cpu {
                 let hi = self.fetch_byte(bus) as u16;
                 return (hi << 8) | lo;
             }
-            _ => panic!("No addressing mode specified"),
         }
     }
 
@@ -90,6 +89,14 @@ impl Cpu {
             self.set_flag(Flag::H);
         } else {
             self.unset_flag(Flag::H);
+        }
+    }
+
+    fn check_c(&mut self, a: u8, b: u8) {
+        if (a as u16) + (b as u16) > u8::MAX as u16 {
+            self.set_flag(Flag::C);
+        } else {
+            self.unset_flag(Flag::C);
         }
     }
 
